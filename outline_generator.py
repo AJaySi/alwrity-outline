@@ -1,7 +1,8 @@
 import time
 import os
 import json
-import openai
+
+import google.generativeai as genai
 import streamlit as st
 from tenacity import retry, stop_after_attempt, wait_random_exponential
 
@@ -57,45 +58,6 @@ def hide_elements():
 
 def title_and_description():
     st.title("🧕 Alwrity - AI Content Outline Generator")
-    with st.expander("**How to Use** Alwrity AI content outline Generator? 📝❗"):
-        st.markdown('''
-           ---
-		**Step 1: Open the Streamlit App**
-		
-		Access the Streamlit app where the tool is deployed.
-		
-		**Step 2: Input Title and Select Content Type**
-		
-		In the first input field labeled **"Enter Title of your content Or main keywords:"**, type a descriptive title or main keywords summarizing the content you want to create an outline for.
-		
-		Then, select the type of content you're outlining from the dropdown menu labeled **"Select the type of content:"**. Choose from options such as Blog, Article, Essay, Story, or Other.
-		
-		**Step 3: Specify Outline Details**
-		
-		After entering the title and selecting the content type, adjust the sliders to specify the number of main headings and subheadings per heading.
-		
-		- Use the slider labeled **"Number of main headings:"** to select how many main sections you want in your outline.
-		- Similarly, use the slider labeled **"Number of subheadings per heading:"** to choose the number of subsections under each main section.
-		
-		**Step 4: Generate Outline**
-		
-		Once you've provided the necessary details, click the "Generate Outline" button.
-		
-		**Step 5: Review and Utilize the Outline**
-		
-		After the outline is generated, review it to ensure it aligns with your expectations and serves as a structured framework for your content.
-		
-		**Step 6: Further Editing (If Necessary)**
-		
-		If needed, make adjustments to the generated outline or refine it according to your preferences.
-		
-		**Step 7: Save or Export the Outline**
-		
-		Once satisfied with the outline, save or export it
- 
-            ---
-        ''')
-
 
 def input_section():
     with st.expander("**PRO-TIP** - Better input yield, better results.", expanded=True):
@@ -133,7 +95,6 @@ def input_section():
             else:
                 st.error("Input Title/Topic of content to outline, Required!")
 
-    page_bottom()
 
 
 def generate_outline(outline_title, content_type, num_headings, num_subheadings):
@@ -158,63 +119,32 @@ def generate_outline(outline_title, content_type, num_headings, num_subheadings)
 
         """
     
-    return openai_chatgpt(prompt)
-
-
-def page_bottom():
-    """Display the bottom section of the web app."""
-    with st.expander("Alwrity - Content outline generator - powered by AI (OpenAI, Gemini Pro)."):
-        st.write('''
-        Introducing Alwrity - Your Ultimate Content Outline AI Generator!
-
-			Are you struggling to structure your content effectively? Say goodbye to writer's block and endless brainstorming sessions with Alwrity - the AI-powered Content Outline Generator!
-			
-			**🧠 Unlock Creativity:** Alwrity leverages cutting-edge AI technology to generate well-organized, logically structured outlines for your content, whether it's a blog post, article, essay, or story.
-			
-			**🚀 Seamless Workflow:** With just a few clicks, you can input your content title, select the type of content you're creating, and specify the number of headings and subheadings. Alwrity takes care of the rest, providing you with a detailed outline in seconds.
-			
-			**📝 How It Works:**
-			1. **Input Title & Select Content Type:** Describe your content idea in a single sentence and choose from various content types.
-			2. **Specify Outline Details:** Customize the number of main headings and subheadings to tailor the outline to your needs.
-			3. **Generate Outline:** Click the button, and Alwrity will swiftly generate a structured outline based on your inputs.
-			4. **Review & Edit:** Review the outline, make any necessary adjustments, and fine-tune it to perfection.
-			5. **Save or Export:** Once satisfied, save or export the outline to kickstart your content creation journey.
-			
-			**💡 Pro Tips:** For better results, provide detailed input and follow the guidelines provided within the tool.
-			
-			Say hello to hassle-free content creation with Alwrity - Your trusted partner for crafting compelling content outlines effortlessly. Try it now and unleash your creativity like never before!
-			
-			[Get Started Now](https://alwrity.com)
-			
-			---
-			
-			Content outline generator - powered by AI (OpenAI, Gemini Pro).	
-			Implemented by [Alwrity](https://alwrity.com).
-        ''')
-
+    return gemini_text_response(prompt)
 
 
 @retry(wait=wait_random_exponential(min=1, max=60), stop=stop_after_attempt(6))
-def openai_chatgpt(prompt, model="gpt-3.5-turbo-0125", max_tokens=1500, top_p=0.6, n=3):
+def gemini_text_response(prompt):
+    """ Common functiont to get response from gemini pro Text. """
     try:
-        client = openai.OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
-        response = client.chat.completions.create(
-            model=model,
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=max_tokens,
-            n=n,
-            top_p=top_p
-        )
-        return response.choices[0].message.content
-    except openai.APIError as e:
-        st.error(f"OpenAI API Error: {e}")
-    except openai.APIConnectionError as e:
-        st.error(f"Failed to connect to OpenAI API: {e}")
-    except openai.RateLimitError as e:
-        st.error(f"Rate limit exceeded on OpenAI API request: {e}")
+        genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
     except Exception as err:
-        st.error(f"An error occurred: {err}")
-
+        st.error(f"Failed to configure Gemini: {err}")
+    # Set up the model
+    generation_config = {
+        "temperature": 0.6,
+        "top_p": 0.3,
+        "top_k": 1,
+        "max_output_tokens": 1024
+    }
+    # FIXME: Expose model_name in main_config
+    model = genai.GenerativeModel(model_name="gemini-1.0-pro", generation_config=generation_config)
+    try:
+        # text_response = []
+        response = model.generate_content(prompt)
+        return response.text
+    except Exception as err:
+        st.error(response)
+        st.error(f"Failed to get response from Gemini: {err}. Retrying.")
 
 
 if __name__ == "__main__":
