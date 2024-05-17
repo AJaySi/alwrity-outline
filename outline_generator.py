@@ -90,6 +90,7 @@ def input_section():
                     if content_outline:
                         st.subheader('**👩🔬👩🔬 Your Content Outline:**')
                         st.markdown(content_outline)
+                        st.write("\n\n\n\n\n\n")
                     else:
                         st.error("💥 **Failed to generate STAR copy. Please try again!**")
             else:
@@ -137,7 +138,7 @@ def gemini_text_response(prompt):
         "max_output_tokens": 1024
     }
     # FIXME: Expose model_name in main_config
-    model = genai.GenerativeModel(model_name="models/gemini-1.5-pro-latest", generation_config=generation_config)
+    model = genai.GenerativeModel(model_name="gemini-1.5-flash-latest", generation_config=generation_config)
     try:
         # text_response = []
         response = model.generate_content(prompt)
